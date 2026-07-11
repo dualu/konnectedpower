@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html>
-<style>
-    /* Force mobile layout overrides */
-    @media (max-width: 768px) {
-        .main-wrapper { flex-direction: column !important; }
-        .sidebar { width: 100% !important; height: auto !important; }
-        .hamburger-menu { display: block !important; } /* Force display */
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Hamburger Logic for mobile */
+        .hamburger-menu { display: none; cursor: pointer; padding: 15px; font-size: 24px; color: #475569; }
         
-        .nav-links { display: none !important; } /* Hidden by default */
-        .nav-links.active { display: flex !important; flex-direction: column !important; }
-    }
-</style>
+        @media (max-width: 768px) {
+            .main-wrapper { flex-direction: column; }
+            .sidebar { width: 100% !important; }
+            .hamburger-menu { display: block !important; }
+            .nav-links { display: none; }
+            .nav-links.active { display: block; }
+        }
+    </style>
+</head>
 <body>
     <div class="main-wrapper">
         <aside class="sidebar">
@@ -18,8 +22,7 @@
                 <img src="{{ url_for('static', filename='company_logo.png') }}" 
                      alt="Logo" style="width: 32px; height: 32px; object-fit: contain;">
                 <h3 style="margin: 0; font-size: 1.2rem; white-space: nowrap;">Konnected Liberia</h3>
-                <!-- Hamburger Icon -->
-                <div class="hamburger-menu" onclick="toggleSidebar()" style="display: none; margin-left: auto;">☰</div>
+                <div class="hamburger-menu" onclick="toggleSidebar()">☰</div>
             </div>
             
             <ul class="nav-links" id="sidebarNav">
@@ -38,17 +41,10 @@
     </div>
 
     <script>
-    function toggleSidebar() {
-        console.log("Hamburger clicked"); // Check your console to see if this appears
-        const nav = document.getElementById('sidebarNav');
-        if (nav.style.display === "none" || nav.style.display === "") {
-            nav.style.display = "flex";
-            nav.classList.add('active');
-        } else {
-            nav.style.display = "none";
-            nav.classList.remove('active');
+        function toggleSidebar() {
+            const nav = document.getElementById('sidebarNav');
+            nav.classList.toggle('active');
         }
-    }
-</script>
+    </script>
 </body>
 </html>
