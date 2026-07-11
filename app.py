@@ -18,7 +18,12 @@ from models import (
 # 1. INITIALIZE APP & CONFIG
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'enterprise_super_secret_key_2024'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///powerhouse_enterprise.db'
+
+# Finds the exact directory path your app.py is running from
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+# Links explicitly to your powerhouse_enterprise.db file inside your project folder
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'powerhouse_enterprise.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
