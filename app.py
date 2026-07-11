@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -9,6 +10,7 @@ from werkzeug.utils import secure_filename
 from collections import defaultdict
 from flask_mail import Mail, Message
 from apscheduler.schedulers.background import BackgroundScheduler
+from thefuzz import fuzz # Or 'from fuzzywuzzy import fuzz'
 import atexit
 
 from models import (
@@ -18,12 +20,7 @@ from models import (
 # 1. INITIALIZE APP & CONFIG
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'enterprise_super_secret_key_2024'
-
-# Finds the exact directory path your app.py is running from
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-
-# Links explicitly to your powerhouse_enterprise.db file inside your project folder
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'powerhouse_enterprise.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///powerhouse_enterprise.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -532,38 +529,30 @@ def submit_shift():
 @app.route('/supervisor', methods=['GET', 'POST'])
 @login_required
 def supervisor_dashboard():
-    # ... keep your login role validation checks here ...
-
-   # 🌟 EXTRACT: Query parameters from the dashboard search controls
+    # 🌟 EXTRACT: Query parameters
     start_date_str = request.args.get('start_date', '')
-    active_tab = request.args.get('active_tab', '') # 'day' or 'night'
+    active_tab = request.args.get('active_tab', '') 
     
-    # 🏎️ NEW STRATEGY: Intercept search queries and auto-route to the operator entry layout
+    # 🏎️ Auto-routing logic
     if start_date_str and active_tab:
         try:
             from datetime import datetime
             search_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             shift_name = 'Day' if active_tab == 'day' else 'Night'
             
-            # Query the database for this specific shift report document
             target_report = ShiftReport.query.filter(
                 db.func.date(ShiftReport.timestamp) == search_date,
                 ShiftReport.shift_type == shift_name
             ).first()
             
             if target_report:
-                # Success! Forward the supervisor straight to the operator edit/review page
                 return redirect(url_for('review_shift', report_id=target_report.id))
             else:
-                # Fallback warning if an operator hasn't submitted a report for that day yet
                 flash(f"No operational {shift_name} shift report was found for {start_date_str}.", "warning")
-                
         except Exception as e:
             print(f"Error executing auto-routing sequence: {e}")
 
-    # ====================================================================
-    # 📊 PRESERVED: CHRONOLOGICAL DELTA METRICS ENGINE FOR DISPLAY CARDS
-    # ====================================================================
+    # 📊 Metrics Engine
     from datetime import datetime as dt, timedelta
     weekly_window_date = dt.now() - timedelta(days=7)
     all_fuel_logs = FuelLog.query.all()
@@ -576,7 +565,6 @@ def supervisor_dashboard():
         elif hasattr(f_log, 'timestamp') and f_log.timestamp:
             log_date = f_log.timestamp
 
-        # Fuel efficiency calculations strictly keep the 7-day window filter
         if log_date is None or log_date >= weekly_window_date:
             if f_log.gallons_consumed and f_log.gallons_consumed.strip() != "":
                 try: total_gallons += float(f_log.gallons_consumed)
@@ -585,123 +573,59 @@ def supervisor_dashboard():
     total_kwh = 0.0
     distinct_gensets = db.session.query(GeneratorLog.genset_id).distinct().all()
     genset_ids = [g[0] for g in distinct_gensets if g[0]]
+    HARDCODED_BASELINES = {'ag 2': 1290.0, 'ag 4': 4472352.0, 'ag 5': 3448095.0, 'ag 7': 13837.0, 'ag 8': 1096792.0, 'ag 9': 1081938.0}
 
-    HARDCODED_BASELINES = {
-        'ag 2': 1290.0, 'ag 4': 4472352.0, 'ag 5': 3448095.0,  
-        'ag 7': 13837.0, 'ag 8': 1096792.0, 'ag 9': 1081938.0   
-    }
-
-    # 🚨 INDUSTRY STANDARD: Unrestricted Exception Queue Loop for Anomalies
     active_maintenance_alerts = []
-    
     for g_id in genset_ids:
         all_logs_for_unit = GeneratorLog.query.filter_by(genset_id=g_id).order_by(GeneratorLog.id.asc()).all()
         clean_num = str(g_id).lower().replace('ag', '').strip()
-        
         for i in range(0, len(all_logs_for_unit)):
             current_log = all_logs_for_unit[i]
             if i == 0: continue
             previous_log = all_logs_for_unit[i - 1]
-
-            # 🛠️ THE FIXED LINK: Safely lookup the ShiftReport via its ID to get around the missing relationship property
-            parent_report = None
-            if current_log.report_id:
-                parent_report = db.session.get(ShiftReport, current_log.report_id) if hasattr(db.session, 'get') else ShiftReport.query.get(current_log.report_id)
-
-            # Calculate parameters safely
+            parent_report = db.session.get(ShiftReport, current_log.report_id) if hasattr(db.session, 'get') else ShiftReport.query.get(current_log.report_id)
+            
             log_date = parent_report.timestamp if parent_report else None
             shift_name_str = parent_report.shift_type.lower() if (parent_report and parent_report.shift_type) else 'day'
             
             if current_log.kw:
                 try:
                     curr_val = float(current_log.kw.strip())
-                    if i - 1 == 0 and g_id in HARDCODED_BASELINES:
-                        prev_val = HARDCODED_BASELINES[g_id]
-                    else:
-                        prev_val = float(previous_log.kw.strip()) if previous_log.kw else curr_val
-                    
+                    prev_val = HARDCODED_BASELINES[g_id] if (i - 1 == 0 and g_id in HARDCODED_BASELINES) else float(previous_log.kw.strip()) if previous_log.kw else curr_val
                     shift_delta = curr_val - prev_val
-                    
-                    # 🔥 FIXED: Removed the weekly window filter completely so ALL your historical kWh pulls through!
-                    if shift_delta >= 0: 
-                        total_kwh += shift_delta
-
-                    # 1. Delta Counter Check (Typo rollbacks)
+                    if shift_delta >= 0: total_kwh += shift_delta
                     if shift_delta < 0:
-                       active_maintenance_alerts.append({
-                        'genset_id': g_id,
-                        'report_id': current_log.report_id,
-                        'shift_type': shift_name_str,
-                        'date': log_date.strftime('%b %d, %Y') if log_date else 'Unknown Date',  # 🌟 ADD THIS LINE
-                        'message': f"❌ DATA ANOMALY: Unit AG-{clean_num} current kWhr counter..."
-                    })
-
-                    # Calculate log consumption for SFC checks
+                        active_maintenance_alerts.append({'genset_id': g_id, 'report_id': current_log.report_id, 'shift_type': shift_name_str, 'date': log_date.strftime('%b %d, %Y') if log_date else 'Unknown Date', 'message': f"❌ DATA ANOMALY: Unit AG-{clean_num} current kWhr counter..."})
+                    
                     total_gen_gallons = 0.0
-                    if parent_report and hasattr(parent_report, 'fuel_logs') and parent_report.fuel_logs:
+                    if parent_report and hasattr(parent_report, 'fuel_logs'):
                         for fl in parent_report.fuel_logs:
                             if fl.genset_id == g_id and fl.gallons_consumed:
                                 try: total_gen_gallons += float(fl.gallons_consumed)
                                 except ValueError: pass
-
                     sfc_current = (total_gen_gallons / shift_delta) if shift_delta > 0 else 0.0
-                    
-                    # 2. SFC Out of Bounds Rules
-                    if sfc_current > 0.45:
-                        active_maintenance_alerts.append({
-                            'genset_id': g_id,
-                            'report_id': current_log.report_id,
-                            'shift_type': shift_name_str,
-                            'message': f"⚠️ HIGH SFC ANOMALY: Unit AG-{clean_num} has an elevated Specific Fuel Consumption (SFC) of {round(sfc_current, 4)} L/kWhr! Inspect for active structural fuel leaks, mechanical drag, or incorrect manual entries."
-                        })
-                    elif sfc_current < 0.15 and total_gen_gallons > 0:
-                        active_maintenance_alerts.append({
-                            'genset_id': g_id,
-                            'report_id': current_log.report_id,
-                            'shift_type': shift_name_str,
-                            'message': f"⚠️ LOW SFC ANOMALY: Unit AG-{clean_num} has an abnormally low Specific Fuel Consumption (SFC) of {round(sfc_current, 4)} L/kWhr! Verify if some refueling volumes were left unrecorded."
-                        })
-                        
-                except ValueError: 
-                    continue
+                    if sfc_current > 0.45 or (sfc_current < 0.15 and total_gen_gallons > 0):
+                        active_maintenance_alerts.append({'genset_id': g_id, 'report_id': current_log.report_id, 'shift_type': shift_name_str, 'message': f"⚠️ SFC ANOMALY: Unit AG-{clean_num} has an SFC of {round(sfc_current, 4)} L/kWhr."})
+                except ValueError: continue
 
-            # 3. Runtime Maintenance Countdown checks
             if current_log.run_hours:
                 try:
                     hours_val = float(current_log.run_hours)
                     remaining = 250 - (hours_val % 250)
-                    if remaining <= 49:
-                        active_maintenance_alerts.append({
-                            'genset_id': g_id,
-                            'report_id': current_log.report_id,
-                            'shift_type': shift_name_str,
-                            'message': f"⚠️ CRITICAL: Unit AG-{clean_num} has only {round(remaining, 1)} runtime hours remaining before service!"
-                        })
-                    elif remaining <= 99:
-                        active_maintenance_alerts.append({
-                            'genset_id': g_id,
-                            'report_id': current_log.report_id,
-                            'shift_type': shift_name_str,
-                            'message': f"🚨 ALERT: Unit AG-{clean_num} has only {round(remaining, 1)} runtime hours remaining before service."
-                        })
-                except ValueError:
-                    pass
+                    if remaining <= 99:
+                        active_maintenance_alerts.append({'genset_id': g_id, 'report_id': current_log.report_id, 'shift_type': shift_name_str, 'message': f"🚨 ALERT: Unit AG-{clean_num} has {round(remaining, 1)} hours remaining."})
+                except ValueError: pass
 
-    # 🌟 FIXED: sfc_metric is now unindented completely out of the loops! 
-    sfc_metric = 0.00
-    if total_kwh > 0:
-        sfc_metric = round(total_gallons / total_kwh, 3)
-
-    # 🔄 APPROACH A MATCHING COUNT LINKAGE: Force card count to match anomaly list length exactly
+    sfc_metric = round(total_gallons / total_kwh, 3) if total_kwh > 0 else 0.0
     active_faults_count = len(active_maintenance_alerts)
+    system_health = "Critical" if active_faults_count > 3 else "Warning" if active_faults_count > 0 else "Optimal"
 
-    system_health = "Optimal"
-    if active_faults_count > 3:
-        system_health = "Critical"
-    elif active_faults_count > 0:
-        system_health = "Warning"
-
+    # 🌟 SURGICAL INJECTION: Calculate fuel per report
     reports = ShiftReport.query.order_by(ShiftReport.timestamp.desc()).limit(10).all()
+    for report in reports:
+        total = db.session.query(db.func.sum(FuelLog.gallons_consumed)).filter(FuelLog.report_id == report.id).scalar() or 0.0
+        report.calculated_fuel_total = round(total, 2)
+
     maintenance_tasks = MaintenanceTask.query.all()
     
     return render_template('supervisor.html',
@@ -714,7 +638,7 @@ def supervisor_dashboard():
                            reports=reports,
                            maintenance_tasks=maintenance_tasks,
                            tasks=maintenance_tasks,
-                           active_maintenance_alerts=active_maintenance_alerts, # Array pushed down safely
+                           active_maintenance_alerts=active_maintenance_alerts,
                            start_date=start_date_str,
                            end_date='',
                            day_report=None,
@@ -1233,8 +1157,8 @@ def import_historical_excel():
     except Exception as e:
         db.session.rollback()
         flash(f"❌ Extraction failed: {str(e)}", "danger")
-    
-    return redirect(url_for('index'))
+
+    return redirect(url_for('admin_dashboard')) # 👈 Corrected redirection
 
 
 if __name__ == '__main__':
