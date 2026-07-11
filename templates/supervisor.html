@@ -284,15 +284,12 @@
                         <td>{{ report.timestamp.strftime('%Y-%m-%d') if report.timestamp else 'N/A' }}</td>
                         <td>{{ report.submitted_by }}</td>
                         <td>
-                            {% set total_gal = namespace(val=0.0) %}
-                            {% if report.fuel_logs %}
-                                {% for f_log in report.fuel_logs %}
-                                    {% if f_log.gallons_consumed and f_log.gallons_consumed|string|trim != "" %}
-                                        {% set total_gal.val = total_gal.val + f_log.gallons_consumed|float %}
-                                    {% endif %}
-                                {% endfor %}
+                            <!-- 🌟 UPDATED: Pulls the pre-calculated total from the backend object -->
+                            {% if report.calculated_fuel_total %}
+                                <strong>{{ (report.calculated_fuel_total * 3.78541) | round(1) }}</strong> L
+                            {% else %}
+                                <span style="color: #94a3b8;">0.0 L</span>
                             {% endif %}
-                            <strong>{{ (total_gal.val * 3.78541) | round(1) }}</strong> L
                         </td>
                         <td>
                             <a href="{{ url_for('review_shift', report_id=report.id) }}" style="background: #2563eb; color: white; text-decoration: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; display: inline-block;">✏️ Edit Report</a>
