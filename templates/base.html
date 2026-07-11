@@ -1,19 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Sidebar and Layout Styles */
+        .main-wrapper { display: flex; min-height: 100vh; }
+        .sidebar { width: 250px; background: #f8fafc; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+        .content-area { flex: 1; padding: 20px; }
+        .nav-links { list-style: none; padding: 0; }
+        .nav-links li a { display: block; padding: 15px; text-decoration: none; color: #475569; font-weight: 500; }
+        .nav-links li a:hover { background: #e2e8f0; }
+        .logout-btn { display: block; padding: 15px; text-decoration: none; color: #dc2626; font-weight: bold; }
+
+        /* Responsive Mobile Styles */
+        @media (max-width: 768px) {
+            .main-wrapper { flex-direction: column; }
+            .sidebar { width: 100%; }
+            .hamburger-menu { display: block !important; padding: 15px; font-size: 24px; cursor: pointer; }
+            
+            /* Hide nav by default on mobile */
+            .nav-links { display: none; }
+            /* Show when active class is added by JS */
+            .nav-links.active { display: flex; flex-direction: column; }
+        }
+    </style>
 </head>
 <body>
     <div class="main-wrapper">
         <aside class="sidebar">
             <div class="sidebar-header" style="display: flex; align-items: center; gap: 10px; padding: 15px;">
                 <img src="{{ url_for('static', filename='company_logo.png') }}" 
-                     alt="Logo" 
-                     style="width: 32px; height: 32px; object-fit: contain;">
+                     alt="Logo" style="width: 32px; height: 32px; object-fit: contain;">
                 <h3 style="margin: 0; font-size: 1.2rem; white-space: nowrap;">Konnected Liberia</h3>
+                <!-- Hamburger Icon -->
+                <div class="hamburger-menu" onclick="toggleSidebar()" style="display: none; margin-left: auto;">☰</div>
             </div>
             
-            <ul class="nav-links">
+            <ul class="nav-links" id="sidebarNav">
                 <li><a href="/admin">⚙️ System Admin</a></li>
                 <li><a href="/supervisor">🔍 Supervisor Logs</a></li>
                 <li><a href="/operator">📄 Operator Terminal</a></li>
@@ -27,5 +49,12 @@
             {% block content %}{% endblock %}
         </main>
     </div>
+
+    <script>
+        function toggleSidebar() {
+            const nav = document.getElementById('sidebarNav');
+            nav.classList.toggle('active');
+        }
+    </script>
 </body>
 </html>
