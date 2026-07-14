@@ -524,7 +524,7 @@ def submit_shift():
         db.session.rollback()
         flash(f"🚨 Critical database write fault: {str(e)}")
 
-    return redirect(url_for('operator_dashboard'))
+    return redirect(url_for('operator_dashboard', shift_type=chosen_shift))
 
 
 
