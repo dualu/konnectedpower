@@ -11,6 +11,7 @@ from collections import defaultdict
 from flask_mail import Mail, Message
 from apscheduler.schedulers.background import BackgroundScheduler
 
+
 import atexit
 
 from models import (
@@ -523,7 +524,7 @@ def submit_shift():
         db.session.rollback()
         flash(f"🚨 Critical database write fault: {str(e)}")
 
-    return redirect(url_for('operator_portal', shift_type=chosen_shift))
+    return redirect(url_for('operator_dashboard'))
 
 
 
