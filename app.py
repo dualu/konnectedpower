@@ -10,6 +10,7 @@ from werkzeug.utils import secure_filename
 from collections import defaultdict
 from flask_mail import Mail, Message
 from apscheduler.schedulers.background import BackgroundScheduler
+from sqlalchemy import func, extract
 
 
 import atexit
