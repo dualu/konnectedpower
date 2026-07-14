@@ -148,7 +148,7 @@ def login():
             
         if current_user.role == 'super_admin': return redirect(url_for('admin_dashboard'))
         if current_user.role == 'supervisor': return redirect(url_for('supervisor_dashboard'))
-        return redirect(url_for('operator_dashboard'))
+        return redirect(url_for('operator_portal'))
 
     if request.method == 'POST':
         username = request.form.get('username')
@@ -166,7 +166,7 @@ def login():
             # If the user is clear, resume normal dashboard routing rules
             if user.role == 'super_admin': return redirect(url_for('admin_dashboard'))
             if user.role == 'supervisor': return redirect(url_for('supervisor_dashboard'))
-            return redirect(url_for('operator_dashboard'))
+            return redirect(url_for('operator_portal'))
         else:
             flash('Invalid username or password.')
             
@@ -523,7 +523,7 @@ def submit_shift():
         db.session.rollback()
         flash(f"🚨 Critical database write fault: {str(e)}")
 
-    return redirect(url_for('operator_dashboard', shift_type=chosen_shift))
+    return redirect(url_for('operator_portal', shift_type=chosen_shift))
 
 
 
