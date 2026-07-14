@@ -915,11 +915,22 @@ def review_shift(report_id):
     reefer_faults = ReeferFault.query.filter_by(report_id=report_id).all()
     fuel_logs = FuelLog.query.filter_by(report_id=report_id).all()
     
+    # 🌟 INTEGRATED SQL LOGIC (Date-based aggregation)
+    report_date_prefix = report.timestamp.strftime('%Y-%m-%d') + '%'
+    fuel_data = db.session.query(
+        FuelLog.genset_id, 
+        func.sum(func.cast(FuelLog.gallons_consumed, db.Float)).label('total_consumed')
+    ).join(ShiftReport, FuelLog.report_id == ShiftReport.id)\
+     .filter(ShiftReport.timestamp.like(report_date_prefix))\
+     .group_by(FuelLog.genset_id)\
+     .all()
+
+    fuel_totals = {row.genset_id: (row.total_consumed or 0.0) for row in fuel_data}
+    
     if request.method == 'POST':
-        # Save Report Meta
         report.status = request.form.get('status')
         
-        # Save every single line item raw from the form submissions
+        # Save Generator Logs (Restored)
         for gen in generator_logs:
             gen.volts = request.form.get(f'volts_{gen.id}')
             gen.amps = request.form.get(f'amps_{gen.id}')
@@ -930,19 +941,18 @@ def review_shift(report_id):
             gen.run_hours = request.form.get(f'hours_{gen.id}')
             gen.next_service = request.form.get(f'next_service_{gen.id}')
 
+        # Save Reefer Faults (Restored)
         for ref in reefer_faults:
             ref.temperature = request.form.get(f'reefer_temp_{ref.id}')
             ref.status = request.form.get(f'reefer_status_{ref.id}')
 
+        # Save individual Fuel Logs (Restored)
         for fuel in fuel_logs:
             fuel.gallons_consumed = request.form.get(f'fuel_consumed_{fuel.id}')
             fuel.gallons_added = request.form.get(f'fuel_added_{fuel.id}')
 
         db.session.commit()
-        flash(f"✅ Shift report #{report_id} completely updated successfully!")
-        
-        if current_user.role == 'super_admin':
-            return redirect(url_for('admin_dashboard'))
+        flash(f"✅ Shift report #{report_id} updated successfully!")
         return redirect(url_for('supervisor_dashboard'))
         
     return render_template(
@@ -950,11 +960,11 @@ def review_shift(report_id):
         report=report, 
         generator_logs=generator_logs,
         fuel_logs=fuel_logs, 
+        fuel_totals=fuel_totals,
         current_user=current_user,
         reefer_inventory=reefer_inventory,
         reefer_faults=reefer_faults
     )
-
 
 @app.route('/analytics')
 @login_required
