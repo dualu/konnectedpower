@@ -72,40 +72,43 @@
             </div>
         </div>
 
-        <div class="card" style="margin-bottom: 30px; border-left: 4px solid #b45309;">
-            <h2>⛽ Fuel Logistics & Volumetric Logs</h2>
-            <p style="color: #64748b; margin-bottom: 20px;">Review and make alterations to fuel drops, runtime consumption parameters, or storage tank fillings:</p>
-            
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
-                    <thead>
-                        <tr style="background: #fffbeb; border-bottom: 2px solid #fde68a; text-align: left;">
-                            <th style="padding: 12px 10px;">Target Asset Name / Tank</th>
-                            <th style="padding: 12px 10px;">Gallons Consumed (Gal)</th>
-                            <th style="padding: 12px 10px;">Gallons Added / Refueled (Gal)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% set active_fuel = fuel_logs if fuel_logs else report.fuel_logs %}
-                        {% for fuel in active_fuel %}
-                        <tr style="border-bottom: 1px solid #e2e8f0;">
-                            <td style="padding: 12px 10px; font-weight: bold; color: #9a3412;">{{ fuel.genset_id or 'Main Storage Tank' }}</td>
-                            <td style="padding: 6px 5px;">
-                                <input type="text" name="fuel_consumed_{{ fuel.id }}" value="{{ fuel.gallons_consumed }}" style="width: 120px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;"> Gal
-                            </td>
-                            <td style="padding: 6px 5px;">
-                                <input type="text" name="fuel_added_{{ fuel.id }}" value="{{ fuel.gallons_added }}" style="width: 120px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;"> Gal
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="3" style="padding: 20px; color: #64748b; text-align: center; font-style: italic;">No volumetric fuel logs appended to this shift.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+   <div class="card" style="margin-bottom: 30px; border-left: 4px solid #b45309;">
+    <h2>⛽ Fuel Logistics & Volumetric Logs</h2>
+    <p style="color: #64748b; margin-bottom: 20px;">Review and make alterations to fuel drops, runtime consumption parameters, or storage tank fillings:</p>
+    
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+            <thead>
+                <tr style="background: #fffbeb; border-bottom: 2px solid #fde68a; text-align: left;">
+                    <th style="padding: 12px 10px;">Target Asset Name / Tank</th>
+                    <th style="padding: 12px 10px;">Gallons Consumed (Gal)</th>
+                    <th style="padding: 12px 10px;">Gallons Added / Refueled (Gal)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="background: #fef3c7; border-bottom: 2px solid #fbbf24; font-weight: bold;">
+                    <td style="padding: 12px 10px;">SHIFT TOTALS</td>
+                    <td style="padding: 12px 10px; color: #9a3412;">
+                        {{ "%.2f"|format(fuel_totals.values()|sum) }} Gal
+                    </td>
+                    <td style="padding: 12px 10px;"></td>
+                </tr>
+
+                {% for genset_id, total_consumed in fuel_totals.items() %}
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 12px 10px; font-weight: bold; color: #9a3412;">{{ genset_id }}</td>
+                    <td style="padding: 6px 5px;">
+                        <input type="text" name="fuel_consumed_{{ genset_id }}" value="{{ "%.2f"|format(total_consumed) }}" style="width: 120px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;"> Gal
+                    </td>
+                    <td style="padding: 6px 5px;">
+                        <input type="text" name="fuel_added_{{ genset_id }}" placeholder="0.00" style="width: 120px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;"> Gal
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
         <div class="card" style="margin-bottom: 30px; overflow-x: auto;">
             <h2>⚡ Generator Telemetry & "Next Service" Adjustments</h2>
