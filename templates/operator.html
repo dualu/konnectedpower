@@ -266,7 +266,27 @@
                 
                 <button type="button" class="add-row-btn" onclick="addFuelRow()">+ Add New Time Entry</button>
             </div>
-
+             <div class="section-card" style="border-top-color: #ef4444;">
+                <h2 class="section-title">🛠️ 5. Maintenance & Active Tasks</h2>
+                <div id="taskContainer">
+                    <div class="grid-row" style="border: 1px solid #cbd5e1; padding: 15px; border-radius: 8px;">
+                        <div class="input-group">
+                            <label>Task Type</label>
+                            <select name="task_type_1">
+                                <option value="none">-- No Actions Taken --</option>
+                                <option value="PM">Generator PM (Routine)</option>
+                                <option value="CM">Generator CM (Breakdown)</option>
+                                <option value="Electrical">Electrical Team Task</option>
+                            </select>
+                        </div>
+                        <div class="input-group"><label>Asset/Location</label><input type="text" name="task_asset_1" placeholder="e.g. AG-2"></div>
+                        <div class="input-group" style="flex: 2;"><label>Notes & Parts</label><input type="text" name="task_notes_1" placeholder="Replaced Oil Filter"></div>
+                        <div class="input-group"><label>Progress (%)</label><input type="number" name="task_progress_1" max="99" min="0" placeholder="0 - 99"></div>
+                        <div class="input-group"><label>Before Photo</label><input type="file" name="image_before_1" accept="image/*"></div>
+                        <div class="input-group"><label>After Photo</label><input type="file" name="image_after_1" accept="image/*"></div>
+                    </div>
+                </div>
+            </div>
             <button type="submit" class="submit-btn">✅ Submit Shift Report to Database</button>
         </form>
     </div>
