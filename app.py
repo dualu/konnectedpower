@@ -424,7 +424,26 @@ def submit_shift():
                 log_entry.next_service = str(final_next_service)
                 
         db.session.add(log_entry)
-
+        # 🛠️ PROCESS MAINTENANCE TASKS (Updated to match models.py)
+    t_idx = 1
+    while True:
+        task_type = request.form.get(f'task_type_{t_idx}')
+        # Break loop if we stop finding task types
+        if not task_type:
+            break
+            
+        if task_type != 'none':
+            new_task = MaintenanceTask(
+                task_type=task_type,
+                asset_id=request.form.get(f'task_asset_{t_idx}'),
+                notes=request.form.get(f'task_notes_{t_idx}'),
+                progress=int(request.form.get(f'task_progress_{t_idx}', 0)),
+                status='Active' # Default status as per your model
+                # Note: 'before_photo' and 'after_photo' logic would go here
+                # if you are capturing file paths from request.files or request.form
+            )
+            db.session.add(new_task)
+        t_idx += 1
         # Real-time alert threshold checking during submission
         current_h = float(h) if (h and h.strip() != "") else None
         if current_h is None:
